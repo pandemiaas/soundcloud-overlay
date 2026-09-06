@@ -1,0 +1,287 @@
+/* SoundCloud Overlay — dark translucent card, monospace */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  background: transparent;
+  overflow: hidden;
+  user-select: none;
+  font-family: 'Cascadia Mono', 'JetBrains Mono', Consolas, 'Courier New', monospace;
+}
+
+/* invisible audio widget (kept off-screen so it never captures clicks) */
+#player {
+  position: fixed;
+  left: -20000px;
+  top: 0;
+  width: 400px;
+  height: 300px;
+  border: 0;
+}
+
+.card {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  background: linear-gradient(160deg, rgba(20, 21, 26, 0.86), rgba(10, 10, 13, 0.92));
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 14px;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.65);
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: #e8e8ea;
+  overflow: hidden;
+}
+
+/* dimmed backdrop feel behind the content */
+.card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    radial-gradient(120% 90% at 110% -20%, rgba(80, 40, 160, 0.14), transparent 55%),
+    radial-gradient(120% 100% at -10% 120%, rgba(0, 0, 0, 0.35), transparent 60%);
+}
+
+.card > * { position: relative; z-index: 1; }
+
+/* header */
+.titlebar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  -webkit-app-region: drag;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  color: #9a9aa2;
+}
+.dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #5a5a62;
+  flex: none;
+}
+.dot.on  { background: #4ade80; box-shadow: 0 0 8px rgba(74, 222, 128, 0.7); }
+.dot.busy{ background: #facc15; box-shadow: 0 0 8px rgba(250, 204, 21, 0.7); }
+.dot.err { background: #f87171; box-shadow: 0 0 8px rgba(248, 113, 113, 0.7); }
+.brand { font-weight: 700; color: #f97316; }
+.dev { font-size: 9px; color: #5f5f66; letter-spacing: 0.5px; }
+.hint { margin-left: auto; color: #6b6b74; }
+
+/* artwork + info */
+.row { display: flex; gap: 12px; align-items: center; }
+.art {
+  width: 108px; height: 108px;
+  flex: none;
+  border-radius: 8px;
+  background: #191a20 center/cover no-repeat;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 34px; color: #3c3d45;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.art img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; }
+
+.info { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 3px; }
+.line {
+  font-size: 10px;
+  color: #7c7c86;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.line.prev { color: #9a9aa2; }
+.line.next { color: #9a9aa2; text-align: right; }
+.title {
+  font-size: 17px; font-weight: 700; color: #f2f2f5;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.artist {
+  font-size: 13px; color: #f97316;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* vertical volume rail, right side of the track-info (top-bottom) */
+.volbox {
+  flex: none;
+  width: 26px;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  -webkit-app-region: no-drag;
+}
+.volhint { font-size: 9px; color: #5a5a62; letter-spacing: 1px; }
+.voltube {
+  position: relative;
+  flex: 1;
+  width: 8px;
+  min-height: 60px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.10);
+  overflow: hidden;
+}
+.volfill {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 0%;
+  background: linear-gradient(180deg, #fb923c, #f97316);
+  border-radius: 5px;
+}
+
+/* controls */
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.controls button { background: transparent; border: none; }
+.controls button:hover { background: rgba(255, 255, 255, 0.12); }
+.controls button:active { background: rgba(249, 115, 22, 0.30); }
+.controls button:disabled { opacity: 0.3; cursor: default; }
+
+/* icon images inside the transport buttons */
+.controls .icon-btn,
+.controls .state-btn {
+  -webkit-app-region: no-drag;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px; height: 30px;
+  padding: 0;
+  border-radius: 8px;
+  flex: none;
+}
+.controls .ico {
+  display: inline-flex;
+  width: 22px; height: 22px;
+}
+.controls .ico img {
+  width: 22px; height: 22px;
+  object-fit: contain;
+  user-select: none;
+  -webkit-user-drag: none;
+  filter: invert(1) brightness(1.6); /* dark->white recolor for dark UI */
+}
+.controls .glyph {
+  font-size: 20px;
+  line-height: 1;
+  color: #d7d9de;
+}
+/* repeat icon (SVG from SoundCloud) */
+.r-ico {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.r-ico svg { color: #c8cbd1; }
+.r-badge {
+  position: absolute;
+  right: -4px; bottom: -4px;
+  min-width: 10px; height: 10px;
+  padding: 0 2px;
+  border-radius: 5px;
+  background: #f97316;
+  color: #0a0a0c;
+  font-size: 8px;
+  font-weight: 700;
+  line-height: 10px;
+  text-align: center;
+}
+/* state buttons toggle colour */
+.controls .state-btn.active .glyph { color: #f97316; text-shadow: 0 0 8px rgba(249,115,22,.6); }
+.controls .state-btn.on .glyph { color: #f97316; }
+/* prev = next mirrored horizontally */
+.controls .ico.flip { transform: scaleX(-1); }
+
+/* seek time group */
+.seekzone {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.bar {
+  flex: 1;
+  height: 8px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.10);
+  cursor: pointer;
+  overflow: hidden;
+}
+.fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #f97316, #fb923c);
+  border-radius: 5px;
+}
+.time {
+  font-size: 11px;
+  color: #8d8d97;
+  min-width: 30px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.status {
+  font-size: 10px;
+  color: #6e6e78;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ===== АНИМАЦИЯ ПОЯВЛЕНИЯ/СКРЫТИЯ ===== */
+@keyframes overlay-in {
+  from {
+    opacity: 0;
+    transform: translateX(30px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes overlay-out {
+  from {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(30px) scale(0.95);
+  }
+}
+
+.card.anim-in {
+  animation: overlay-in 0.25s ease-out forwards;
+}
+
+.card.anim-out {
+  animation: overlay-out 0.25s ease-in forwards;
+}
+
+/* ===== РЕЖИМ КЛИКСКВОЗИ ===== */
+.card.click-through {
+  opacity: 0.65;
+  filter: saturate(0.7);
+  pointer-events: none;
+}
+
+.card.click-through::before {
+  content: "🖱 CLICK-THROUGH (Alt+C)";
+  position: absolute;
+  top: -22px;
+  right: 0;
+  font-size: 10px;
+  color: #f97316;
+  letter-spacing: 1px;
+  font-weight: bold;
+}

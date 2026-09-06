@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; connect-src 'self' http://127.0.0.1:*; style-src 'self' 'unsafe-inline'; script-src 'self';" />
+  <title>Настройки — SoundCloud Overlay</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0d0f14;
+      color: #e8e8ea;
+      font-family: 'Cascadia Mono', 'JetBrains Mono', Consolas, monospace;
+      font-size: 13px;
+      padding: 20px;
+    }
+    h1 {
+      font-size: 16px; color: #f97316; margin-bottom: 18px;
+      letter-spacing: 1px;
+    }
+    .setting {
+      margin-bottom: 16px;
+    }
+    .setting label {
+      display: flex; justify-content: space-between;
+      margin-bottom: 6px;
+      color: #9a9aa2; font-size: 12px;
+    }
+    .setting label .val {
+      color: #7fdcff; font-weight: bold;
+    }
+    .setting input[type="range"] {
+      width: 100%; height: 6px;
+      -webkit-appearance: none;
+      background: #1e2430;
+      border-radius: 3px;
+      outline: none;
+    }
+    .setting input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: #f97316;
+      cursor: pointer;
+    }
+    .setting .hint {
+      font-size: 10px; color: #5a5a62; margin-top: 3px;
+    }
+    .buttons {
+      display: flex; gap: 10px; margin-top: 20px;
+    }
+    button {
+      background: transparent;
+      border: 1px solid #3d5a74;
+      color: #7fdcff;
+      padding: 8px 16px;
+      font-family: inherit;
+      font-size: 12px;
+      cursor: pointer;
+      border-radius: 4px;
+      flex: 1;
+    }
+    button:hover { background: #1a2a3a; }
+    button.primary { border-color: #f97316; color: #f97316; }
+    button.primary:hover { background: rgba(249, 115, 22, 0.15); }
+    .status-msg {
+      margin-top: 12px;
+      font-size: 11px;
+      color: #00ff66;
+      text-align: center;
+      min-height: 14px;
+    }
+    .divider { border-top: 1px solid #1e2430; margin: 16px 0; }
+    .hotkeys {
+      font-size: 11px; color: #5a5a62; line-height: 1.6;
+    }
+    .hotkeys b { color: #9a9aa2; }
+  </style>
+</head>
+<body>
+  <h1>⚙ Настройки оверлея</h1>
+
+  <div class="setting">
+    <label>Прозрачность <span class="val" id="v-opacity">100%</span></label>
+    <input type="range" id="opacity" min="20" max="100" value="100" step="5">
+    <div class="hint">Насколько непрозрачна карточка (20%–100%)</div>
+  </div>
+
+  <div class="setting">
+    <label>Размер <span class="val" id="v-scale">100%</span></label>
+    <input type="range" id="scale" min="50" max="150" value="100" step="5">
+    <div class="hint">Масштаб карточки (50%–150%)</div>
+  </div>
+
+  <div class="setting">
+    <label>Сдвиг по горизонтали <span class="val" id="v-offsetX">5.5%</span></label>
+    <input type="range" id="offsetX" min="0" max="30" value="5.5" step="0.5">
+    <div class="hint">Смещение вправо от центра экрана</div>
+  </div>
+
+  <div class="setting">
+    <label>Сдвиг по вертикали <span class="val" id="v-offsetY">0 px</span></label>
+    <input type="range" id="offsetY" min="-200" max="200" value="0" step="10">
+    <div class="hint">Смещение вверх/вниз от центра</div>
+  </div>
+
+  <div class="setting">
+    <label>Скорость анимации <span class="val" id="v-animMs">250 ms</span></label>
+    <input type="range" id="animMs" min="100" max="500" value="250" step="50">
+    <div class="hint">Длительность появления/скрытия карточки</div>
+  </div>
+
+  <div class="buttons">
+    <button onclick="reset()">↺ Сбросить</button>
+    <button class="primary" onclick="save()">💾 Сохранить</button>
+  </div>
+
+  <div class="status-msg" id="msg"></div>
+
+  <div class="divider"></div>
+  <div class="hotkeys">
+    <b>Горячие клавиши:</b><br>
+    Alt+D — показать/скрыть оверлей<br>
+    Alt+C — кликсквозь вкл/выкл<br>
+    Alt+S — настройки<br>
+    Alt+Space — play/pause<br>
+    Alt+← / Alt+→ — пред/след трек
+  </div>
+
+  <script src="settings.js"></script>
+</body>
+</html>

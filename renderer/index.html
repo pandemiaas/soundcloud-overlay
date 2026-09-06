@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; connect-src 'self' ws://127.0.0.1:* http://127.0.0.1:*; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: http:;" />
+  <title>SC Overlay (local)</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <section id="card" class="card">
+    <header class="titlebar">
+      <span class="dot" id="stateDot"></span>
+      <span class="brand">SC&nbsp;OVERLAY</span>
+      <span class="dev">dev: pandemias</span>
+      <span class="hint">ALT+D · ALT+C</span>
+    </header>
+
+    <!-- main row: art | track info + vertical volume -->
+    <div class="row">
+      <div class="art" id="art">♪</div>
+      <div class="info">
+        <div class="line prev" id="prevLine">◂ prev —</div>
+        <div class="title" id="trackTitle">not&nbsp;connected</div>
+        <div class="artist" id="trackArtist">—</div>
+        <div class="line next" id="nextLine">next — ▸</div>
+      </div>
+      <div class="volbox" title="Volume (read-only indicator)">
+        <div class="volhint">vol</div>
+        <div class="voltube" id="volTube">
+          <div class="volfill" id="volFill"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- transport + seek + like + repeat -->
+    <div class="controls">
+      <button id="btnPrev" class="icon-btn" title="Previous track"><span class="ico flip"><img src="icons/next.png" alt="prev" draggable="false"></span></button>
+      <button id="btnPlay" class="icon-btn" title="Play / Pause"><span class="ico"><img id="imgPlay" src="icons/play.png" alt="play" draggable="false"></span></button>
+      <button id="btnNext" class="icon-btn" title="Next track"><span class="ico"><img src="icons/next.png" alt="next" draggable="false"></span></button>
+
+      <div class="seekzone">
+        <div class="time" id="timePos">--:--</div>
+        <div class="bar" id="bar"><div class="fill" id="fill"></div></div>
+        <div class="time" id="timeDur">--:--</div>
+      </div>
+
+      <button id="btnLike" class="state-btn like" title="Like / unlike"><span class="glyph" id="likeGlyph">♡</span></button>
+      <button id="btnRepeat" class="state-btn repeat" title="Repeat mode">
+        <span class="r-ico">
+          <svg viewBox="0 0 16 16" width="20" height="20" aria-hidden="true">
+            <path fill="currentColor" d="M1.25 8C1.25 5.37665 3.37665 3.25 6 3.25H10C12.6234 3.25 14.75 5.37665 14.75 8C14.75 10.6234 12.6234 12.75 10 12.75H5.31065L6.03032 13.4697L4.96966 14.5303L2.43933 12L4.96966 9.46967L6.03032 10.5303L5.31065 11.25H10C11.7949 11.25 13.25 9.79493 13.25 8C13.25 6.20507 11.7949 4.75 10 4.75H6C4.20507 4.75 2.75 6.20507 2.75 8V8.75H1.25V8Z"/>
+          </svg>
+          <span class="r-badge" id="repeatBadge"></span>
+        </span>
+      </button>
+    </div>
+
+    <div class="status" id="status">waiting for extension…</div>
+  </section>
+  <script src="gui.js"></script>
+</body>
+</html>
