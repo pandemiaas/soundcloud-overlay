@@ -2,7 +2,7 @@
 /* Local bridge UI: shows whatever the browser extension reports, keeps it synced. */
 const $ = (id) => document.getElementById(id);
 const els = {
-  dot: $('stateDot'), art: $('art'),
+  dot: $('stateDot'), art: $('art'), info: $('info'),
   title: $('trackTitle'), artist: $('trackArtist'),
   prevLine: $('prevLine'), nextLine: $('nextLine'),
   btnPrev: $('btnPrev'), btnPlay: $('btnPlay'), btnNext: $('btnNext'),
@@ -14,6 +14,11 @@ const els = {
 
 let ws = null;
 let snapshot = null;
+let currentTrackKey = null;     // title|artist — detect track change
+let swapBusy = false;           // swap animation in progress
+let queuedSnapshot = null;      // snapshot that arrived during swap
+const trackKeyOf = (s) => `${s.title || ''}|${s.artist || ''}`;
+const SWAP_MS = 380;            // 0.35s anim + margin
 
 const fmt = (sec) => {
   if (!Number.isFinite(sec) || sec < 0) sec = 0;
@@ -30,9 +35,8 @@ function setStatus(text, state) {
   els.status.textContent = text;
 }
 
-function renderSnap(d) {
-  snapshot = d || {};
-  const s = snapshot;
+/* Render snapshot content without the swap animation */
+function renderSnapInner(s) {
   els.title.textContent = mono(s.title) || '—';
   els.artist.textContent = mono(s.artist) || '—';
   const a = s.artwork || s.avatar || '';
@@ -54,7 +58,7 @@ function renderSnap(d) {
   els.btnPrev.disabled = false;
   els.btnNext.disabled = false;
 
-  // volume
+  // volume (read-only indicator)
   if (typeof s.volume === 'number') {
     els.volFill.style.height = Math.round(Math.max(0, Math.min(1, s.volume)) * 100) + '%';
   }
@@ -74,6 +78,41 @@ function renderSnap(d) {
     badge.textContent = rm === 'one' ? '1' : '';
     badge.style.display = rm === 'one' ? '' : 'none';
   }
+}
+
+/* Track-change swap: info+art slide out left, new slides in from right */
+function renderSnap(d) {
+  const s = d || {};
+  const key = trackKeyOf(s);
+
+  if (swapBusy) { queuedSnapshot = s; return; }          // swallow during swap
+
+  if (currentTrackKey !== null && key !== currentTrackKey && (s.title || s.artist)) {
+    // Track changed → animate
+    swapBusy = true;
+    currentTrackKey = key;
+    els.info.classList.add('track-swap-out');
+    els.art.classList.add('track-swap-out');
+    setTimeout(() => {
+      renderSnapInner(s);
+      snapshot = s;
+      els.info.classList.remove('track-swap-out');
+      els.art.classList.remove('track-swap-out');
+      els.info.classList.add('track-swap-in');
+      els.art.classList.add('track-swap-in');
+      setTimeout(() => {
+        els.info.classList.remove('track-swap-in');
+        els.art.classList.remove('track-swap-in');
+        swapBusy = false;
+        if (queuedSnapshot) { const q = queuedSnapshot; queuedSnapshot = null; renderSnap(q); }
+      }, SWAP_MS);
+    }, SWAP_MS / 2);
+    return;
+  }
+
+  currentTrackKey = key;
+  renderSnapInner(s);
+  snapshot = s;
 }
 
 function rawSend(obj) {

@@ -1,14 +1,19 @@
 /* settings.js — логика окна настроек SC Overlay */
 const $ = (id) => document.getElementById(id);
 const fields = ['opacity', 'scale', 'offsetX', 'offsetY', 'animMs'];
-const defaults = { opacity: 1.0, scale: 1.0, offsetX: 5.5, offsetY: 0, animMs: 250 };
+const defaults = {
+  opacity: 1.0, scale: 1.0, offsetX: 5.5, offsetY: 0, animMs: 250,
+  discordClientId: '',
+};
 let current = { ...defaults };
+let prevDiscordId = '';
 
 // Load current settings
 fetch('/api/settings')
   .then(r => r.json())
   .then(s => {
-    current = s;
+    current = { ...defaults, ...s };
+    prevDiscordId = current.discordClientId || '';
     updateUI();
   })
   .catch(() => updateUI());
@@ -24,6 +29,7 @@ function updateUI() {
   $('v-offsetY').textContent = current.offsetY + ' px';
   $('animMs').value = current.animMs;
   $('v-animMs').textContent = current.animMs + ' ms';
+  $('discordClientId').value = current.discordClientId || '';
 }
 
 // Live preview on slider change
@@ -40,6 +46,12 @@ fields.forEach(f => {
     clearTimeout(window._t);
     window._t = setTimeout(() => post(current, false), 300);
   });
+});
+
+// Discord Client ID — save on blur / Enter (reconnect happens in main)
+$('discordClientId').addEventListener('change', () => {
+  current.discordClientId = $('discordClientId').value.trim();
+  post(current);
 });
 
 function post(data, showMessage = true) {

@@ -268,6 +268,30 @@ html, body {
   animation: overlay-out 0.25s ease-in forwards;
 }
 
+/* ===== АНИМАЦИЯ СМЕНЫ ТРЕКА ===== */
+/* Инфо-блок уезжает влево и гаснет, новая въезжает справа со скейлом */
+@keyframes track-swap-out {
+  from { opacity: 1; transform: translateX(0) scale(1); }
+  to   { opacity: 0; transform: translateX(-28px) scale(0.96); }
+}
+
+@keyframes track-swap-in {
+  from { opacity: 0; transform: translateX(28px) scale(0.96); }
+  to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+.info.track-swap-out {
+  animation: track-swap-out 0.35s ease-in forwards;
+}
+
+.info.track-swap-in {
+  animation: track-swap-in 0.35s ease-out forwards;
+}
+
+/* Обложка тоже меняется мягко */
+.art.track-swap-out { animation: track-swap-out 0.35s ease-in forwards; }
+.art.track-swap-in  { animation: track-swap-in 0.35s ease-out forwards; }
+
 /* ===== РЕЖИМ КЛИКСКВОЗИ ===== */
 .card.click-through {
   opacity: 0.65;

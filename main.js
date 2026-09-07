@@ -31,6 +31,7 @@ let tray = null;
 let clients = new Set();
 let isClickThrough = false;
 let isHiding = false;
+let lastSnapshot = null;
 
 /* ---------- settings ---------- */
 const SETTINGS_FILE = path.join(app.getPath('userData'), 'settings.json');
@@ -40,6 +41,7 @@ const DEFAULT_SETTINGS = {
   offsetX: 5.5,   // % of screen width from center
   offsetY: 0,     // px from center
   animMs: 250,
+  discordClientId: '418577778070437901', // placeholder — замени на свой App ID
 };
 
 function loadSettings() {
@@ -51,6 +53,106 @@ function loadSettings() {
 
 function saveSettings(s) {
   try { fs.writeFileSync(SETTINGS_FILE, JSON.stringify(s, null, 2)); } catch (e) { console.error('[settings] save failed:', e.message); }
+}
+
+/* ---------- Discord Rich Presence ---------- */
+let rpc = null;
+let rpcConnected = false;
+let rpcClientId = null;
+let rpcConnecting = false;
+let lastTrackKey = null;      // title+artist — to detect track change
+let trackStartedAt = null;    // epoch ms when current track started (for RPC timer)
+
+function rpcInit(clientId) {
+  clientId = String(clientId || '').trim();
+  if (!clientId) {                          // empty id = feature off
+    rpcDestroy();
+    rpcClientId = null;
+    lastTrackKey = null;
+    return;
+  }
+  if (rpcConnected && rpcClientId === clientId) return;
+  if (rpcConnecting) return;
+
+  // (re)create connection
+  rpcDestroy();
+  rpcConnecting = true;
+  rpcClientId = clientId;
+
+  try { const DiscordRPC = require('discord-rpc'); DiscordRPC.register(clientId); } catch (_) {}
+  try { rpc = new (require('discord-rpc').Client)({ transport: 'ipc' }); }
+  catch (e) { console.error('[rpc] create failed:', e.message); rpcConnecting = false; return; }
+
+  rpc.on('ready', () => {
+    rpcConnected = true;
+    rpcConnecting = false;
+    console.log('[rpc] connected to Discord as', rpc.user ? rpc.user.username : '?');
+    if (lastSnapshot) updatePresence(lastSnapshot); // push current track immediately
+  });
+  rpc.on('disconnected', () => {
+    rpcConnected = false;
+    console.log('[rpc] disconnected');
+    setTimeout(() => rpcInit(rpcClientId), 5000); // auto-reconnect
+  });
+
+  rpc.login({ clientId }).catch((e) => {
+    rpcConnected = false;
+    rpcConnecting = false;
+    console.log('[rpc] login failed (Discord не запущен?):', e.message);
+    setTimeout(() => rpcInit(rpcClientId), 15000); // retry later
+  });
+}
+
+function rpcDestroy() {
+  if (rpc) {
+    try { rpc.destroy(); } catch (_) {}
+    rpc = null;
+  }
+  rpcConnected = false;
+}
+
+function updatePresence(snapshot) {
+  if (!rpc || !rpcConnected || !snapshot) return;
+  const s = snapshot;
+
+  // Track change detection → reset timer
+  const key = `${s.title || ''}|${s.artist || ''}`;
+  if (key !== lastTrackKey) {
+    lastTrackKey = key;
+    // started = now - current position (so Discord timer shows real progress)
+    trackStartedAt = Date.now() - Math.round((Number(s.position) || 0) * 1000);
+  }
+
+  const playing = !!s.playing;
+  const duration = Number(s.duration) || 0;
+
+  const presence = {
+    details: (s.title || '—').slice(0, 128),
+    state: (s.artist || '—').slice(0, 128),
+    largeImageKey: (s.artwork && /^https:\/\//.test(s.artwork)) ? s.artwork : 'sc-logo',
+    largeImageText: 'SoundCloud Overlay',
+    instance: false,
+  };
+
+  // Progress timestamps (only when duration is known)
+  if (duration > 0) {
+    if (playing) {
+      presence.startTimestamp = trackStartedAt;
+      presence.endTimestamp = trackStartedAt + Math.round(duration * 1000);
+    } else {
+      // paused: show frozen elapsed time
+      presence.startTimestamp = trackStartedAt;
+      delete presence.endTimestamp;
+    }
+  }
+
+  // Button «Слушать на SoundCloud» (needs a valid URL)
+  const url = s.url && /^https:\/\/(www\.|m\.)?soundcloud\.com\//.test(s.url) ? s.url : null;
+  if (url) {
+    presence.buttons = [{ label: 'Слушать на SoundCloud', url }];
+  }
+
+  rpc.setActivity(presence).catch(() => {});
 }
 
 function applySettings(s) {
@@ -100,6 +202,11 @@ function startHttp() {
               const merged = { ...current, ...data };
               saveSettings(merged);
               applySettings(merged);
+              // Discord RPC: reconnect if clientId changed
+              if (typeof data.discordClientId === 'string' && data.discordClientId.trim() !== rpcClientId) {
+                lastTrackKey = null;
+                rpcInit(merged.discordClientId);
+              }
               res.writeHead(200);
               res.end(JSON.stringify({ ok: true, settings: merged }));
             } catch (e) {
@@ -144,7 +251,12 @@ function startWs() {
         try { d = JSON.parse(raw.toString()); } catch (_) { return; }
         if (!d || !d.type) return;
         if (d.type === 'cmd') { broadcast({ type: 'cmd', scope: d.scope || 'overlay_control', cmd: d.cmd, position: d.position, volume: d.volume }, sock); }
-        else if (d.type === 'snapshot') { broadcast({ type: 'snapshot', data: d.data || {} }); }
+        else if (d.type === 'snapshot') {
+          const data = d.data || {};
+          lastSnapshot = data;
+          updatePresence(data);                      // Discord RPC
+          broadcast({ type: 'snapshot', data });
+        }
         else if (d.type === 'state') { broadcast({ type: 'state', data: d.data || {} }); }
       });
       sock.on('close', () => { clients.delete(sock); });
@@ -296,6 +408,11 @@ app.whenReady().then(async () => {
   httpPortNum = await startHttp();
   const wsPort = await startWs();
   console.log(`[overlay] http=127.0.0.1:${httpPortNum} ws=127.0.0.1:${wsPort}`);
+
+  // Discord RPC (if clientId set in settings)
+  const s0 = loadSettings();
+  if (s0.discordClientId) rpcInit(s0.discordClientId);
+
   await createWindow(httpPortNum);
   createTray();
 
@@ -327,6 +444,7 @@ app.whenReady().then(async () => {
 
 app.on('will-quit', () => {
   globalShortcut.unregisterAll();
+  try { if (rpc) { rpc.clearActivity().catch(() => {}); rpc.destroy(); } } catch (_) {}
   try { if (wsSrv) wsSrv.close(); } catch (_) {}
   try { if (httpSrv) httpSrv.close(); } catch (_) {}
   try { if (tray) tray.destroy(); } catch (_) {}
