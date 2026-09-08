@@ -1,7 +1,7 @@
 {
   "name": "sc-overlay",
   "productName": "SoundCloud Overlay",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "SoundCloud gaming overlay in beta: BETA — Discord RPC, media hotkeys, tray, click-through.",
   "main": "main.js",
   "author": "pandemias",

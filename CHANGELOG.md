@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.2.2 (2026-09-08)
+
+### Fixed
+- Discord RPC: переписан через raw SET_ACTIVITY вместо setActivity() — кнопки больше не дропаются. Теперь есть кнопка **GitHub** и **«Слушать на SoundCloud»**.
+
+# Changelog
+
 ## v1.2.1 (2026-09-08)
 
 ### Fixed

@@ -138,41 +138,63 @@ function updatePresence(snapshot) {
     trackStartedAt = Date.now() - Math.round((Number(s.position) || 0) * 1000);
   }
 
+  // Shorten strings: Discord drops the WHOLE activity (buttons included!) if
+  // `state`/`details` are too long or contain bad chars. Keep well under limits.
+  const trunc = (str, n) => (str.length > n ? str.slice(0, n - 1) + '…' : str);
+  const oneLine = (x) => String(x || '').replace(/\s+/g, ' ').trim();
+
+  const rawArtist = oneLine(s.artist);
+  const rawTitle = oneLine(s.title);
+  const artist = (rawArtist || 'Исполнитель');
+  const title = (rawTitle || 'Трек');
+
+  // state string compact — Discord limit is 128, we stay ~60
+  const stateStr = trunc(`${artist} — ${title}`, 60);
+  const tooltip = trunc(`${title} · ${artist}`, 90);
+
+  const art = (s.artwork && /^https?:\/\//.test(s.artwork)) ? s.artwork : null;
   const playing = !!s.playing;
   const duration = Number(s.duration) || 0;
-  const title = (s.title || '—').slice(0, 128);
-  const artist = (s.artist || '—').slice(0, 128);
 
-  // Track art (HTTP) works on any Application ID without uploading assets.
-  const art = (s.artwork && /^https?:\/\//.test(s.artwork)) ? s.artwork : null;
-
-  // === Build a CLEAN activity object (no `undefined` fields) ===
-  const presence = {
-    details: (playing ? 'Играет в SoundCloud' : 'Пауза'),
-    state: `${artist} — ${title}`,
-    // largeImage: HTTP art if present, else "sc_overlay" (upload in portal)
-    largeImageKey: art || 'sc_overlay',
-    largeImageText: `${title} — ${artist}`,
-    instance: false,
+  const activity = {
+    details: playing ? 'Играет в SoundCloud' : 'SoundCloud · пауза',
+    state: stateStr,
+    timestamps: {},
+    assets: {
+      // Only reference artwork asset by name or HTTP — both allowed for key
+      large_image: art || 'sc',
+      large_text: tooltip,
+    },
   };
 
-  // Show elapsed listen time while playing (like Spotify)
-  if (playing && duration > 0) {
-    presence.startTimestamp = trackStartedAt;
-  } else if (duration > 0) {
-    presence.startTimestamp = trackStartedAt;       // keep elapsed visible even paused
+  if (duration > 0) {
+    activity.timestamps.start = Math.floor(trackStartedAt / 1000);
   }
 
-  // Actions that your friends can click. Both URLs must be real HTTP(s).
-  presence.buttons = [
-    { label: 'GitHub проекта', url: 'https://github.com/pandemiaas/soundcloud-overlay' }
-  ];
-  const trackUrl = s.url && /^https:\/\/(www\.|m\.)?soundcloud\.com\//.test(s.url) ? s.url : null;
+  // ---- Buttons. Build a URL-safe list; never let the SC button (which could
+  // ---- contain a bad URL) break the always-valid GitHub button.
+  const buttons = [];
+  buttons.push({ label: 'SoundCloud Overlay — GitHub', url: 'https://github.com/pandemiaas/soundcloud-overlay' });
+
+  // Track link — use ONLY if it's clearly an ASCII SoundCloud URL; otherwise
+  // Discord rejects the entire activity (buttons disappear). encodeURI just in case.
+  let trackUrl = null;
+  try {
+    if (s.url && /^https:\/\/[a-zA-Z0-9.-]*soundcloud\.com\//.test(s.url)) {
+      const enc = encodeURI(s.url);
+      if (/^https:\/\/[a-zA-Z0-9%./:_?&=#~-]+$/.test(enc)) trackUrl = enc;   // strictly ASCII-safe
+    }
+  } catch (_) { trackUrl = null; }
   if (trackUrl) {
-    presence.buttons.push({ label: 'Слушать на SoundCloud', url: trackUrl });
+    buttons.push({ label: 'Слушать на SoundCloud', url: trackUrl });
   }
+  activity.buttons = buttons;
 
-  rpc.setActivity(presence).catch((e) => console.warn('[rpc] setActivity:', e.message));
+  rpc.request('SET_ACTIVITY', { pid: process.pid, activity })
+    .then(
+      () => console.log('[rpc] OK — activity отправлен, кнопки:', buttons.length),
+      (e) => console.warn('[rpc] REJECT, кнопки скрыты:', e.message.split(/[:\n]/).pop().trim())
+    );
 }
 
 function applySettings(s) {
