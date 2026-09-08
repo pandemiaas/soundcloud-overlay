@@ -1,9 +1,13 @@
 # 🎧 SoundCloud Overlay
 
+> ## ⚠️ Бета-тест
+> Приложение находится на стадии **открытой беты** — могут быть баги и нестабильность. Используй осторожно и присылай найденные проблемы (issue на GitHub / `pandemias` в Discord).
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-f97316.svg)](LICENSE)
 [![Platform: Windows](https://img.shields.io/badge/Platform-Windows-0078D6.svg)]()
 [![Electron](https://img.shields.io/badge/Electron-33-9feaf9.svg)]()
 [![Vibe Coded](https://img.shields.io/badge/Vibe%20Coded-100%25-ff00ff.svg)]()
+[![Beta](https://img.shields.io/badge/Status-Beta-f39c12.svg)]()
 
 Игровой музыкальный оверлей для SoundCloud в стиле Discord: показывает текущий трек поверх любой игры и позволяет управлять воспроизведением, не сворачивая игру.
 
@@ -31,7 +35,7 @@
 
 ### Шаг 1 — Программа
 
-Скачай и запусти **`SoundCloud Overlay-Setup-1.2.0.exe`** из [Releases](../../releases).
+Скачай и запусти **`SoundCloud Overlay-Setup-1.2.1.exe`** из [Releases](../../releases).
 
 > ⚠️ Windows может показать «Неизвестный издатель» — нажмите «Подробнее → Выполнить в любом случае». Установщик не подписан сертификатом (это стоит ~$200/год).
 

@@ -121,13 +121,37 @@ function rawSend(obj) {
 
 function sendCmd(cmdType) {
   rawSend({ scope: 'overlay_control', type: 'cmd', cmd: cmdType });
-  if (cmdType === 'playpause' && snapshot) {
+
+  if (!snapshot) snapshot = { liked: false, playing: false, repeat: 'off' };
+
+  if (cmdType === 'playpause') {
     snapshot.playing = !snapshot.playing;
-    renderSnap(snapshot);
+    if (!snapshot.duration) snapshot.playing = snapshot.playing;   // just flip icon
   }
-  if (cmdType === 'like' && snapshot) {
+  else if (cmdType === 'like') {
     snapshot.liked = !snapshot.liked;
-    renderSnap(snapshot);
+  }
+
+  // Local echo of state buttons (no animation, immediate)
+  updateStateButtons();
+}
+
+function updateStateButtons() {
+  if (!snapshot) return;
+  const s = snapshot;
+
+  if (els.imgPlay) els.imgPlay.src = s.playing ? 'icons/pause.png' : 'icons/play.png';
+  else if (!els.imgPlay) { els.imgPlay = document.getElementById('imgPlay'); if (els.imgPlay) els.imgPlay.src = s.playing ? 'icons/pause.png' : 'icons/play.png'; }
+
+  els.btnLike.classList.toggle('active', !!s.liked);
+  els.likeGlyph.textContent = s.liked ? '♥' : '♡';
+
+  const rm = (typeof s.repeat === 'string') ? s.repeat : (s.repeat ? 'all' : 'off');
+  const on = rm !== 'off';
+  els.btnRepeat.classList.toggle('active', on);
+  if (on) {
+    const svg = els.btnRepeat.querySelector('svg');
+    if (svg) svg.style.color = '#f97316';
   }
 }
 

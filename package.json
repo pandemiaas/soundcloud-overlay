@@ -1,8 +1,8 @@
 {
   "name": "sc-overlay",
   "productName": "SoundCloud Overlay",
-  "version": "1.2.0",
-  "description": "SoundCloud gaming overlay: Discord Rich Presence, media hotkeys, tray, click-through, settings.",
+  "version": "1.2.1",
+  "description": "SoundCloud gaming overlay in beta: BETA — Discord RPC, media hotkeys, tray, click-through.",
   "main": "main.js",
   "author": "pandemias",
   "license": "MIT",
@@ -23,14 +23,36 @@
     "appId": "com.scoverlay.app",
     "productName": "SoundCloud Overlay",
     "copyright": "dev: pandemias",
-    "files": ["main.js", "renderer/**/*", "package.json"],
-    "directories": { "buildResources": "build" },
+    "files": [
+      "main.js",
+      "renderer/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "buildResources": "build"
+    },
     "extraFiles": [
-      { "from": "extension", "to": "extension", "filter": ["**/*"] },
-      { "from": "README_OVERLAY.md", "to": "README_OVERLAY.md" }
+      {
+        "from": "extension",
+        "to": "extension",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "README_OVERLAY.md",
+        "to": "README_OVERLAY.md"
+      }
     ],
     "win": {
-      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
       "icon": "build/icon.png"
     },
     "nsis": {

@@ -41,7 +41,7 @@ const DEFAULT_SETTINGS = {
   offsetX: 5.5,   // % of screen width from center
   offsetY: 0,     // px from center
   animMs: 250,
-  discordClientId: '418577778070437901', // placeholder — замени на свой App ID
+  discordClientId: '1546828521874264174', // SoundCloud Overlay Dev App
 };
 
 function loadSettings() {
@@ -130,44 +130,49 @@ function updatePresence(snapshot) {
   if (!rpc || !rpcConnected || !snapshot) return;
   const s = snapshot;
 
-  // Track change detection → reset timer
+  // Track change detection → reset elapsed timer
   const key = `${s.title || ''}|${s.artist || ''}`;
   if (key !== lastTrackKey) {
     lastTrackKey = key;
-    // started = now - current position (so Discord timer shows real progress)
+    // started = now - current position (so Discord timer reflects real progress)
     trackStartedAt = Date.now() - Math.round((Number(s.position) || 0) * 1000);
   }
 
   const playing = !!s.playing;
   const duration = Number(s.duration) || 0;
+  const title = (s.title || '—').slice(0, 128);
+  const artist = (s.artist || '—').slice(0, 128);
 
+  // Track art (HTTP) works on any Application ID without uploading assets.
+  const art = (s.artwork && /^https?:\/\//.test(s.artwork)) ? s.artwork : null;
+
+  // === Build a CLEAN activity object (no `undefined` fields) ===
   const presence = {
-    details: (s.title || '—').slice(0, 128),
-    state: (s.artist || '—').slice(0, 128),
-    largeImageKey: (s.artwork && /^https:\/\//.test(s.artwork)) ? s.artwork : 'sc-logo',
-    largeImageText: 'SoundCloud Overlay',
+    details: (playing ? 'Играет в SoundCloud' : 'Пауза'),
+    state: `${artist} — ${title}`,
+    // largeImage: HTTP art if present, else "sc_overlay" (upload in portal)
+    largeImageKey: art || 'sc_overlay',
+    largeImageText: `${title} — ${artist}`,
     instance: false,
   };
 
-  // Progress timestamps (only when duration is known)
-  if (duration > 0) {
-    if (playing) {
-      presence.startTimestamp = trackStartedAt;
-      presence.endTimestamp = trackStartedAt + Math.round(duration * 1000);
-    } else {
-      // paused: show frozen elapsed time
-      presence.startTimestamp = trackStartedAt;
-      delete presence.endTimestamp;
-    }
+  // Show elapsed listen time while playing (like Spotify)
+  if (playing && duration > 0) {
+    presence.startTimestamp = trackStartedAt;
+  } else if (duration > 0) {
+    presence.startTimestamp = trackStartedAt;       // keep elapsed visible even paused
   }
 
-  // Button «Слушать на SoundCloud» (needs a valid URL)
-  const url = s.url && /^https:\/\/(www\.|m\.)?soundcloud\.com\//.test(s.url) ? s.url : null;
-  if (url) {
-    presence.buttons = [{ label: 'Слушать на SoundCloud', url }];
+  // Actions that your friends can click. Both URLs must be real HTTP(s).
+  presence.buttons = [
+    { label: 'GitHub проекта', url: 'https://github.com/pandemiaas/soundcloud-overlay' }
+  ];
+  const trackUrl = s.url && /^https:\/\/(www\.|m\.)?soundcloud\.com\//.test(s.url) ? s.url : null;
+  if (trackUrl) {
+    presence.buttons.push({ label: 'Слушать на SoundCloud', url: trackUrl });
   }
 
-  rpc.setActivity(presence).catch(() => {});
+  rpc.setActivity(presence).catch((e) => console.warn('[rpc] setActivity:', e.message));
 }
 
 function applySettings(s) {
