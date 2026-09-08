@@ -60,8 +60,15 @@ let rpc = null;
 let rpcConnected = false;
 let rpcClientId = null;
 let rpcConnecting = false;
+let rpcRetryTimer = null;
+let rpcWarned = false;        // log failure only once until success
 let lastTrackKey = null;      // title+artist — to detect track change
 let trackStartedAt = null;    // epoch ms when current track started (for RPC timer)
+
+function rpcScheduleRetry() {
+  if (rpcRetryTimer) return;
+  rpcRetryTimer = setTimeout(() => { rpcRetryTimer = null; rpcInit(rpcClientId); }, 60000);
+}
 
 function rpcInit(clientId) {
   clientId = String(clientId || '').trim();
@@ -86,29 +93,37 @@ function rpcInit(clientId) {
   rpc.on('ready', () => {
     rpcConnected = true;
     rpcConnecting = false;
+    rpcWarned = false;
     console.log('[rpc] connected to Discord as', rpc.user ? rpc.user.username : '?');
     if (lastSnapshot) updatePresence(lastSnapshot); // push current track immediately
   });
   rpc.on('disconnected', () => {
     rpcConnected = false;
-    console.log('[rpc] disconnected');
-    setTimeout(() => rpcInit(rpcClientId), 5000); // auto-reconnect
+    rpcConnecting = false;
+    if (rpcWarned) console.log('[rpc] disconnected — будет ретрай (молча)');
+    rpcScheduleRetry();
   });
 
   rpc.login({ clientId }).catch((e) => {
     rpcConnected = false;
     rpcConnecting = false;
-    console.log('[rpc] login failed (Discord не запущен?):', e.message);
-    setTimeout(() => rpcInit(rpcClientId), 15000); // retry later
+    if (!rpcWarned) {
+      console.log('[rpc] Discord не подключён — RPC выключен до перезапуска Discord.');
+      console.log('[rpc] (нужен ДЕСКТОПНЫЙ Discord; ретраи каждые 60с, в лог больше не пишу)');
+      rpcWarned = true;
+    }
+    rpcScheduleRetry();
   });
 }
 
 function rpcDestroy() {
+  if (rpcRetryTimer) { clearTimeout(rpcRetryTimer); rpcRetryTimer = null; }
   if (rpc) {
     try { rpc.destroy(); } catch (_) {}
     rpc = null;
   }
   rpcConnected = false;
+  rpcConnecting = false;
 }
 
 function updatePresence(snapshot) {
@@ -254,10 +269,14 @@ function startWs() {
         else if (d.type === 'snapshot') {
           const data = d.data || {};
           lastSnapshot = data;
-          updatePresence(data);                      // Discord RPC
+          try { updatePresence(data); } catch (e) { console.error('[rpc] presence error:', e.message); } // никогда не ломает broadcast
           broadcast({ type: 'snapshot', data });
         }
         else if (d.type === 'state') { broadcast({ type: 'state', data: d.data || {} }); }
+        else if (d.type === 'getState') {
+          // GUI переподключился — отдаём последнее известное состояние
+          if (lastSnapshot) { try { sock.send(JSON.stringify({ type: 'snapshot', data: lastSnapshot })); } catch (_) {} }
+        }
       });
       sock.on('close', () => { clients.delete(sock); });
     });

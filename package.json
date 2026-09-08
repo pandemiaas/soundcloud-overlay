@@ -1,70 +1,48 @@
-﻿{
-    "name":  "sc-overlay",
-    "productName":  "SoundCloud Overlay",
-    "version":  "1.2.0",
-    "description":  "SoundCloud gaming overlay: Discord Rich Presence, media hotkeys, tray, click-through, settings.",
-    "main":  "main.js",
-    "author":  "pandemias",
-    "scripts":  {
-                    "start":  "electron .",
-                    "pack":  "electron-builder --dir",
-                    "dist":  "electron-builder --win nsis"
-                },
-    "license":  "MIT",
-    "devDependencies":  {
-                            "electron":  "^33.0.0",
-                            "electron-builder":  "^25.1.8"
-                        },
-    "dependencies":  {
-                         "discord-rpc":  "^4.0.1",
-                         "ws":  "^8.21.3"
-                     },
-    "build":  {
-                  "appId":  "com.scoverlay.app",
-                  "productName":  "SoundCloud Overlay",
-                  "copyright":  "dev: pandemias",
-                  "files":  [
-                                "main.js",
-                                "renderer/**/*",
-                                "package.json"
-                            ],
-                  "directories":  {
-                                      "buildResources":  "build"
-                                  },
-                  "extraFiles":  [
-                                     {
-                                         "from":  "extension",
-                                         "to":  "extension",
-                                         "filter":  [
-                                                        "**/*"
-                                                    ]
-                                     },
-                                     {
-                                         "from":  "README_OVERLAY.md",
-                                         "to":  "README_OVERLAY.md"
-                                     }
-                                 ],
-                  "win":  {
-                              "target":  [
-                                             {
-                                                 "target":  "nsis",
-                                                 "arch":  [
-                                                              "x64"
-                                                          ]
-                                             }
-                                         ],
-                              "icon":  "build/icon.png"
-                          },
-                  "nsis":  {
-                               "oneClick":  false,
-                               "allowToChangeInstallationDirectory":  true,
-                               "createDesktopShortcut":  true,
-                               "createStartMenuShortcut":  true,
-                               "shortcutName":  "SoundCloud Overlay",
-                               "uninstallDisplayName":  "SoundCloud Overlay",
-                               "deleteAppDataOnUninstall":  false,
-                               "artifactName":  "${productName}-Setup-${version}.${ext}"
-                           },
-                  "artifactName":  "${productName}-Setup-${version}.${ext}"
-              }
+{
+  "name": "sc-overlay",
+  "productName": "SoundCloud Overlay",
+  "version": "1.2.0",
+  "description": "SoundCloud gaming overlay: Discord Rich Presence, media hotkeys, tray, click-through, settings.",
+  "main": "main.js",
+  "author": "pandemias",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder --win nsis"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "dependencies": {
+    "discord-rpc": "^4.0.1",
+    "ws": "^8.21.3"
+  },
+  "build": {
+    "appId": "com.scoverlay.app",
+    "productName": "SoundCloud Overlay",
+    "copyright": "dev: pandemias",
+    "files": ["main.js", "renderer/**/*", "package.json"],
+    "directories": { "buildResources": "build" },
+    "extraFiles": [
+      { "from": "extension", "to": "extension", "filter": ["**/*"] },
+      { "from": "README_OVERLAY.md", "to": "README_OVERLAY.md" }
+    ],
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "SoundCloud Overlay",
+      "uninstallDisplayName": "SoundCloud Overlay",
+      "deleteAppDataOnUninstall": false,
+      "artifactName": "${productName}-Setup-${version}.${ext}"
+    },
+    "artifactName": "${productName}-Setup-${version}.${ext}"
+  }
 }
