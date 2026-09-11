@@ -1,15 +1,17 @@
 {
   "name": "sc-overlay",
   "productName": "SoundCloud Overlay",
-  "version": "1.2.2",
-  "description": "SoundCloud gaming overlay in beta: BETA — Discord RPC, media hotkeys, tray, click-through.",
+  "version": "2.0.0",
+  "description": "SoundCloud Overlay 2.0 — cross-platform (Windows/Linux) gaming overlay: mini-mode, animations, Discord RPC.",
   "main": "main.js",
   "author": "pandemias",
   "license": "MIT",
   "scripts": {
     "start": "electron .",
     "pack": "electron-builder --dir",
-    "dist": "electron-builder --win nsis"
+    "dist": "electron-builder --win nsis",
+    "dist:linux": "electron-builder --linux AppImage deb",
+    "dist:all": "electron-builder --win nsis --linux AppImage deb"
   },
   "devDependencies": {
     "electron": "^33.0.0",
@@ -54,6 +56,31 @@
         }
       ],
       "icon": "build/icon.png"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "category": "AudioVideo",
+      "synopsis": "Gaming overlay for SoundCloud",
+      "description": "SoundCloud Overlay — прозрачный оверлей поверх игр: текущий трек, управление воспроизведением, Discord Rich Presence, мини-режим.",
+      "desktop": {
+        "Name": "SoundCloud Overlay",
+        "Comment": "Gaming overlay for SoundCloud",
+        "Categories": "AudioVideo;Audio;Player;"
+      }
     },
     "nsis": {
       "oneClick": false,

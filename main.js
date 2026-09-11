@@ -23,6 +23,7 @@ const WS_PORT = Number(process.env.OVERLAY_PORT || 8765);
 const SMOKE = process.env.SMOKE === '1';
 
 let win = null;
+let miniWin = null;
 let settingsWin = null;
 let wsSrv = null;
 let httpSrv = null;
@@ -32,6 +33,8 @@ let clients = new Set();
 let isClickThrough = false;
 let isHiding = false;
 let lastSnapshot = null;
+let lastSnapshotAt = 0;        // время последнего снапшота (для проверки свежести)
+let miniMode = false;          // mini-mode: small rounded bar at top-center
 
 /* ---------- settings ---------- */
 const SETTINGS_FILE = path.join(app.getPath('userData'), 'settings.json');
@@ -296,13 +299,16 @@ function startWs() {
         else if (d.type === 'snapshot') {
           const data = d.data || {};
           lastSnapshot = data;
+          lastSnapshotAt = Date.now();          // для проверки свежести
           try { updatePresence(data); } catch (e) { console.error('[rpc] presence error:', e.message); } // никогда не ломает broadcast
           broadcast({ type: 'snapshot', data });
         }
         else if (d.type === 'state') { broadcast({ type: 'state', data: d.data || {} }); }
         else if (d.type === 'getState') {
-          // GUI переподключился — отдаём последнее известное состояние
-          if (lastSnapshot) { try { sock.send(JSON.stringify({ type: 'snapshot', data: lastSnapshot })); } catch (_) {} }
+          // GUI/мини переподключился — отдаём последнее известное состояние,
+          // но только если оно свежее (иначе покажем «нет данных», а не застрявший трек)
+          const fresh = lastSnapshot && (Date.now() - lastSnapshotAt < 5000);
+          if (fresh) { try { sock.send(JSON.stringify({ type: 'snapshot', data: lastSnapshot })); } catch (_) {} }
         }
       });
       sock.on('close', () => { clients.delete(sock); });
@@ -320,17 +326,76 @@ function broadcast(msg, except) {
 /* ---------- tray ---------- */
 let _updateTrayMenu = null;
 
+/* ---------- автозапуск (кроссплатформенный) ---------- */
+const IS_LINUX = process.platform === 'linux';
+const IS_WIN = process.platform === 'win32';
+const AUTOSTART_DESKTOP = path.join(
+  process.env.HOME || process.env.USERPROFILE || '',
+  '.config', 'autostart', 'soundcloud-overlay.desktop'
+);
+
+function isAutoStartEnabled() {
+  if (IS_LINUX) {
+    try { return fs.existsSync(AUTOSTART_DESKTOP); } catch { return false; }
+  }
+  try { return app.getLoginItemSettings().openAtLogin; } catch { return false; }
+}
+
+function setAutoStart(enabled) {
+  if (IS_LINUX) {
+    try {
+      const dir = path.dirname(AUTOSTART_DESKTOP);
+      if (enabled) {
+        fs.mkdirSync(dir, { recursive: true });
+        const exec = process.execPath;   // путь к AppImage/бинарю
+        const desktop = [
+          '[Desktop Entry]',
+          'Type=Application',
+          'Name=SoundCloud Overlay',
+          'Comment=Gaming overlay for SoundCloud',
+          `Exec="${exec}"`,
+          'Terminal=false',
+          'X-GNOME-Autostart-enabled=true',
+          'StartupNotify=false',
+          ''
+        ].join('\n');
+        fs.writeFileSync(AUTOSTART_DESKTOP, desktop, 'utf8');
+      } else if (fs.existsSync(AUTOSTART_DESKTOP)) {
+        fs.unlinkSync(AUTOSTART_DESKTOP);
+      }
+      return true;
+    } catch (e) {
+      console.error('[autostart] linux failed:', e.message);
+      return false;
+    }
+  }
+  // Windows / macOS
+  try {
+    app.setLoginItemSettings({ openAtLogin: enabled });
+    return true;
+  } catch (e) {
+    console.error('[autostart] failed:', e.message);
+    return false;
+  }
+}
+
 function createTray() {
   const icon = nativeImage.createFromPath(TRAY_ICON);
   tray = new Tray(icon);
   tray.setToolTip('SoundCloud Overlay — Alt+D (показ) | Alt+C (кликсквозь) | Alt+S (настройки)');
 
   _updateTrayMenu = () => {
-    const autoStart = app.getLoginItemSettings().openAtLogin;
+    const autoStart = isAutoStartEnabled();
     const menu = Menu.buildFromTemplate([
       { label: 'Показать / скрыть (Alt+D)', click: () => toggle() },
       { type: 'separator' },
       { label: '⚙ Настройки (Alt+S)', click: () => openSettings() },
+      {
+        label: '🔳 Мини-режим (Alt+M)',
+        type: 'checkbox',
+        checked: miniMode,
+        click: () => toggleMiniMode()
+      },
       {
         label: '🖱 Кликсквозь (Alt+C)',
         type: 'checkbox',
@@ -338,12 +403,10 @@ function createTray() {
         click: () => toggleClickThrough()
       },
       {
-        label: '🔄 Автозапуск с Windows',
+        label: IS_LINUX ? '🔄 Автозапуск с системой' : '🔄 Автозапуск с Windows',
         type: 'checkbox',
         checked: autoStart,
-        click: (mi) => {
-          app.setLoginItemSettings({ openAtLogin: mi.checked });
-        }
+        click: (mi) => { setAutoStart(mi.checked); _updateTrayMenu(); }
       },
       { type: 'separator' },
       { label: '❌ Выход', click: () => { app.quit(); } }
@@ -399,6 +462,62 @@ function toggle() {
   if (!win) return;
   if (win.isVisible()) hideOverlay();
   else showOverlay();
+}
+
+/* ---------- mini mode (small rounded bar, top-center) ---------- */
+async function createMiniWindow() {
+  if (miniWin) return miniWin;
+  const wa = screen.getPrimaryDisplay().workArea;
+  const W = 380, H = 56;
+  const x = Math.round(wa.x + (wa.width - W) / 2);
+  const y = wa.y + 10;
+  miniWin = new BrowserWindow({
+    x, y, width: W, height: H,
+    frame: false, transparent: true, resizable: false,
+    alwaysOnTop: true, skipTaskbar: true, hasShadow: false,
+    show: false, backgroundColor: '#00000000',
+    webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true },
+  });
+  miniWin.setAlwaysOnTop(true, 'screen-saver');
+  miniWin.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  await miniWin.loadURL(`http://127.0.0.1:${httpPortNum}/mini.html?port=${WS_PORT}`);
+  miniWin.on('closed', () => { miniWin = null; });
+  return miniWin;
+}
+
+async function enableMiniMode() {
+  miniMode = true;
+  if (!miniWin) await createMiniWindow();
+  if (win && win.isVisible()) win.hide();
+  if (miniWin) {
+    miniWin.show();
+    if (lastSnapshot) sendToMini(lastSnapshot);
+  }
+  if (_updateTrayMenu) _updateTrayMenu();
+}
+
+function disableMiniMode() {
+  miniMode = false;
+  if (miniWin && !miniWin.isDestroyed()) miniWin.hide();
+  if (win) showOverlay();
+  if (_updateTrayMenu) _updateTrayMenu();
+}
+
+function toggleMiniMode() {
+  if (miniMode) disableMiniMode();
+  else enableMiniMode();
+}
+
+function sendToMini(snapshot) {
+  if (miniWin && !miniWin.isDestroyed()) {
+    try {
+      miniWin.webContents.send('snapshot', snapshot);
+    } catch (_) {
+      miniWin.webContents.executeJavaScript(
+        `window.__miniSnap && window.__miniSnap(${JSON.stringify(snapshot)})`
+      ).catch(() => {});
+    }
+  }
 }
 
 /* ---------- settings window ---------- */
@@ -466,6 +585,7 @@ app.whenReady().then(async () => {
   const okD = globalShortcut.register('Alt+D', toggle);
   const okC = globalShortcut.register('Alt+C', toggleClickThrough);
   const okS = globalShortcut.register('Alt+S', openSettings);
+  const okM = globalShortcut.register('Alt+M', toggleMiniMode);
 
   // Media hotkeys (work even when overlay is hidden)
   const okPP = globalShortcut.register('Alt+Space', () => {
@@ -482,7 +602,7 @@ app.whenReady().then(async () => {
   });
 
   console.log('[overlay] hotkeys:',
-    `Alt+D=${okD}`, `Alt+C=${okC}`, `Alt+S=${okS}`,
+    `Alt+D=${okD}`, `Alt+C=${okC}`, `Alt+S=${okS}`, `Alt+M=${okM}`,
     `Alt+Space=${okPP}`, `Alt+←=${okPrev}`, `Alt+→=${okNext}`);
 
   if (SMOKE) setTimeout(() => { console.log('[overlay] smoke exit'); app.exit(0); }, 30000);
@@ -491,6 +611,7 @@ app.whenReady().then(async () => {
 app.on('will-quit', () => {
   globalShortcut.unregisterAll();
   try { if (rpc) { rpc.clearActivity().catch(() => {}); rpc.destroy(); } } catch (_) {}
+  try { if (miniWin && !miniWin.isDestroyed()) miniWin.destroy(); } catch (_) {}
   try { if (wsSrv) wsSrv.close(); } catch (_) {}
   try { if (httpSrv) httpSrv.close(); } catch (_) {}
   try { if (tray) tray.destroy(); } catch (_) {}

@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; connect-src 'self' ws://127.0.0.1:* http://127.0.0.1:*; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: http:; script-src 'self';" />
+  <title>SC Overlay Mini</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+
+    html, body {
+      width: 100%; height: 100%;
+      background: transparent;
+      overflow: hidden;
+      font-family: 'Cascadia Mono', 'JetBrains Mono', Consolas, monospace;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* Скруглённая капсула сверху по центру */
+    .mini {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 12px;
+      border-radius: 28px;
+      background: linear-gradient(135deg, rgba(20, 21, 26, 0.94), rgba(10, 10, 14, 0.97));
+      border: 1px solid rgba(255, 255, 255, 0.13);
+      box-shadow: 0 10px 34px rgba(0, 0, 0, 0.7);
+      -webkit-app-region: drag;             /* таскается мышью */
+    }
+
+    /* Круглая обложка трека */
+    .art {
+      width: 40px; height: 40px;
+      flex: none;
+      border-radius: 50%;
+      background: #191a20 center/cover no-repeat;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 17px; color: #3c3d45;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      transition: transform 0.35s ease;
+    }
+    .art.spin { animation: spin 8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ===== АНИМАЦИЯ СМЕНЫ ТРЕКА (мини-режим) ===== */
+    /* Инфо-блок уезжает влево и гаснет, новый въезжает справа со скейлом */
+    @keyframes mini-swap-out {
+      from { opacity: 1; transform: translateX(0) scale(1); }
+      to   { opacity: 0; transform: translateX(-22px) scale(0.94); }
+    }
+    @keyframes mini-swap-in {
+      from { opacity: 0; transform: translateX(22px) scale(0.94); }
+      to   { opacity: 1; transform: translateX(0) scale(1); }
+    }
+
+    .info.swap-out { animation: mini-swap-out 0.3s ease-in forwards; }
+    .info.swap-in  { animation: mini-swap-in 0.3s ease-out forwards; }
+
+    .art.swap-out { animation: mini-swap-out 0.3s ease-in forwards; }
+    .art.swap-in  { animation: mini-swap-in 0.3s ease-out forwards; }
+
+    /* Обложка нового трека появляется с «вспышкой» */
+    @keyframes art-pop {
+      0%   { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.55); }
+      70%  { box-shadow: 0 0 0 9px rgba(249, 115, 22, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0); }
+    }
+    .art.art-pop { animation: art-pop 0.65s ease-out; }
+
+    .info {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #f2f2f5;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .artist {
+      font-size: 11px;
+      color: #f97316;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Кнопки */
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      -webkit-app-region: no-drag;
+    }
+    .btn {
+      width: 30px; height: 30px;
+      display: flex; align-items: center; justify-content: center;
+      border: none;
+      border-radius: 50%;
+      background: transparent;
+      color: #d7d9de;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.12s;
+      flex: none;
+    }
+    .btn:hover { background: rgba(255, 255, 255, 0.13); color: #fff; }
+    .btn:active { transform: scale(0.9); }
+    .btn svg { width: 17px; height: 17px; fill: currentColor; }
+
+    /* Мини-прогресс: тонкая линия внизу капсулы */
+    .progress {
+      position: absolute;
+      left: 20px; right: 20px; bottom: 2px;
+      height: 2px;
+      border-radius: 1px;
+      background: rgba(255, 255, 255, 0.10);
+      overflow: hidden;
+    }
+    .progress .fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #f97316, #fb923c);
+      border-radius: 1px;
+      transition: width 0.4s linear;
+    }
+
+    /* Состояние: не подключено */
+    .mini.off .art { opacity: 0.45; }
+    .mini.off .title { color: #6e6e78; }
+  </style>
+</head>
+<body>
+  <div class="mini" id="mini">
+    <div class="art" id="art">♪</div>
+    <div class="info">
+      <div class="title" id="title">нет подключения</div>
+      <div class="artist" id="artist">запусти расширение</div>
+    </div>
+    <div class="controls">
+      <button class="btn" id="btnPrev" title="Предыдущий">
+        <svg viewBox="0 0 16 16"><path d="M5 3v10H3V3h2zm8 0v10l-7-5 7-5z"/></svg>
+      </button>
+      <button class="btn" id="btnPlay" title="Play / Pause">
+        <svg id="icoPlay" viewBox="0 0 16 16"><path d="M4 2.5v11l9-5.5-9-5.5z"/></svg>
+      </button>
+      <button class="btn" id="btnNext" title="Следующий">
+        <svg viewBox="0 0 16 16"><path d="M11 3v10h2V3h-2zM3 3v10l7-5-7-5z"/></svg>
+      </button>
+    </div>
+    <div class="progress"><div class="fill" id="fill"></div></div>
+  </div>
+
+  <script src="mini.js"></script>
+</body>
+</html>

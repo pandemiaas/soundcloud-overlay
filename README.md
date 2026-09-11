@@ -4,12 +4,14 @@
 > Приложение находится на стадии **открытой беты** — могут быть баги и нестабильность. Используй осторожно и присылай найденные проблемы (issue на GitHub / `pandemias` в Discord).
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-f97316.svg)](LICENSE)
-[![Platform: Windows](https://img.shields.io/badge/Platform-Windows-0078D6.svg)]()
+[![Platform: Windows + Linux](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux-0078D6.svg)]()
 [![Electron](https://img.shields.io/badge/Electron-33-9feaf9.svg)]()
 [![Vibe Coded](https://img.shields.io/badge/Vibe%20Coded-100%25-ff00ff.svg)]()
 [![Beta](https://img.shields.io/badge/Status-Beta-f39c12.svg)]()
 
 Игровой музыкальный оверлей для SoundCloud в стиле Discord: показывает текущий трек поверх любой игры и позволяет управлять воспроизведением, не сворачивая игру.
+
+**Работает на Windows и Linux** (AppImage / .deb / любой Chromium-браузер).
 
 ---
 
@@ -18,35 +20,65 @@
 | Фича | Описание |
 |---|---|
 | 🎮 Оверлей поверх игр | Полупрозрачная карточка всегда поверх всех окон |
-| ⌨️ Горячие клавиши | `Alt+D` — показать/скрыть, `Alt+C` — кликсквозь, `Alt+S` — настройки |
+| 🐧 Кроссплатформенность | Windows (.exe) и Linux (AppImage, .deb) |
+| ⌨️ Горячие клавиши | `Alt+D` — показать/скрыть, `Alt+C` — кликсквозь, `Alt+S` — настройки, `Alt+M` — мини-режим |
 | 🎵 Медиа-управление | `Alt+Space` — play/pause, `Alt+←`/`→` — prev/next |
-| 🔄 Автозапуск | Опционально: стартует вместе с Windows |
+| 🔳 Мини-режим | Компактная капсула вверху экрана: круглая обложка, трек, play/pause/next |
+| 🔄 Автозапуск | Windows — реестр; Linux — `~/.config/autostart` |
 | 📌 Системный трей | Иконка в трее с полным меню управления |
-| ✨ Анимация | Плавное появление/скрытие карточки |
+| ✨ Анимации | Плавное появление карточки + смена трека в обоих режимах |
 | 🖱 Кликсквозь | Режим, где клики проходят сквозь оверлей в игру |
 | ⚙ Настройки | Прозрачность, размер, позиция, скорость анимации |
-| 🎮 Discord Rich Presence | Трек в профиле Discord: название, исполнитель, обложка, таймер + кнопка «Слушать на SoundCloud» |
-| 🔁 Анимация смены трека | Плавный переход при переключении: карточка уезжает влево, новая въезжает справа |
+| 🎮 Discord Rich Presence | Трек в профиле Discord: название, исполнитель, обложка, таймер + кнопки «Слушать на SoundCloud» и GitHub |
 | 🔒 Приватность | Всё локально (`127.0.0.1`), никаких серверов |
 
 ---
 
 ## Установка
 
-### Шаг 1 — Программа
+### 🪟 Windows
 
-Скачай и запусти **`SoundCloud Overlay-Setup-1.2.2.exe`** из [Releases](../../releases).
+Скачай и запусти **`SoundCloud Overlay-Setup-2.0.0.exe`** из [Releases](../../releases).
 
 > ⚠️ Windows может показать «Неизвестный издатель» — нажмите «Подробнее → Выполнить в любом случае». Установщик не подписан сертификатом (это стоит ~$200/год).
 
-### Шаг 2 — Расширение Chrome
+### 🐧 Linux
+
+Два варианта на выбор:
+
+**AppImage** (рекомендуется — работает везде):
+```bash
+chmod +x "SoundCloud Overlay-2.0.0.AppImage"
+./"SoundCloud Overlay-2.0.0.AppImage"
+```
+
+**.deb** (Debian / Ubuntu / Mint / Pop!_OS):
+```bash
+sudo dpkg -i soundcloud-overlay_2.0.0_amd64.deb
+# если не хватило зависимостей:
+sudo apt-get install -f
+```
+
+**Arch / Manjaro / CachyOS:**
+```bash
+# AppImage работает из коробки, либо распакуй deb:
+bsdtar -xf soundcloud-overlay_2.0.0_amd64.deb
+```
+
+> 💡 На Linux автозапуск работает через `~/.config/autostart/soundcloud-overlay.desktop` —
+> включи галочку «Автозапуск с системой» в меню трея.
+
+### Шаг 2 — Расширение Chrome (все платформы)
 
 1. Открой `chrome://extensions`
 2. Включи **«Режим разработчика»** (переключатель справа вверху)
 3. Нажми **«Загрузить распакованное расширение»**
-4. Выбери папку `extension` — она лежит рядом с установленной программой:
-   - `%LOCALAPPDATA%\Programs\soundcloud-overlay\extension`
-   - или `<папка установки>\extension`
+4. Выбери папку `extension` — она лежит рядом с программой:
+   - **Windows:** `%LOCALAPPDATA%\Programs\soundcloud-overlay\extension`
+   - **Linux AppImage:** распакуй AppImage (`./App.AppImage --appimage-extract`) → `squashfs-root/extension`
+   - **Linux deb:** `/opt/SoundCloud Overlay/extension`
+
+> Работает в Chrome, Chromium, Brave, Edge, Vivaldi и Opera (все на Chromium).
 
 ### Шаг 3 — Запуск
 
@@ -63,6 +95,7 @@
 | `Alt+D` | Показать / скрыть оверлей |
 | `Alt+C` | Кликсквозь вкл/выкл (клики идут в игру) |
 | `Alt+S` | Открыть настройки |
+| `Alt+M` | Мини-режим вкл/выкл (капсула вверху экрана) |
 | `Alt+Space` | Play / Pause (работает без показа оверлея!) |
 | `Alt+←` | Предыдущий трек |
 | `Alt+→` | Следующий трек |
@@ -97,14 +130,34 @@ cd soundcloud-overlay
 # установить зависимости
 npm install
 
-# собрать установщик NSIS (.exe)
-npx electron-builder --win nsis
+# ---- Windows ----
+npm run dist              # NSIS-установщик (.exe)
 
-# или портативную версию (без установщика)
-npx electron-builder --dir
+# ---- Linux ----
+npm run dist:linux        # AppImage + .deb
+
+# ---- обе платформы ----
+npm run dist:all
+
+# портативная версия (без установщика)
+npm run pack
 ```
 
 Результат в `dist/`.
+
+> ⚠️ **Каждую платформу нужно собирать на своей ОС.** AppImage и `.deb` не собираются
+> на Windows (нужны `mksquashfs` и `dpkg-deb`). Если работаешь на Windows —
+> используй готовые сборки из [Releases](../../releases) или GitHub Actions.
+
+### Автоматическая сборка
+
+В репозитории настроен **GitHub Actions**: при пуше тега `v*` собираются
+**все три артефакта** (Windows .exe + Linux AppImage + .deb) и прикрепляются к релизу.
+
+```bash
+git tag v2.0.0
+git push origin v2.0.0     # → CI соберёт и опубликует всё автоматически
+```
 
 ---
 
